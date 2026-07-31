@@ -271,16 +271,35 @@ class featurizer:
 
     def numeric_matrix(self, df):
         """
-        Reduce a merged DataFrame to a model-ready numeric matrix. 
-        Discard metadata
+        Reduce a merged DataFrame to a model-ready numeric matrix.
+    
+        Keeps only columns whose names start with `self.prefix` or
+        `self.json_prefix`
+    
+        Args:
+            df (pd.DataFrame): Merged DataFrame containing both prefixed
+                feature columns and an `adsorption_mmol_g` target column.
+    
+        Returns:
+            pd.DataFrame: Numeric feature matrix (object columns
+                one-hot encoded, everything else coerced to numeric)
+                with `adsorption_mmol_g` appended as the final column.
+    
+        Raises:
+            KeyError: If `df` has no `adsorption_mmol_g` column.
         """
         prefixes = tuple(p for p in (self.prefix, self.json_prefix) if p)
         cols = [c for c in df.columns if c.startswith(prefixes)]
         sub = df[cols]
+    
         obj = sub.select_dtypes(include="object").columns
         if len(obj):
             sub = pd.get_dummies(sub, columns=list(obj), dummy_na=True)
-        return sub.apply(pd.to_numeric, errors="coerce")
+    
+        final_df = sub.apply(pd.to_numeric, errors="coerce")
+        final_df["adsorption_mmol_g"] = df["adsorption_mmol_g"]
+    
+        return final_df
 
 if __name__ == "__main__":
     fz = featurizer(cif_dir="mofs", max_sites=3000,
